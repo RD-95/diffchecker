@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diff Checker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 8px;
+      color: #cba6f7;
+    }
+
+    p.subtitle {
+      text-align: center;
+      color: #a6adc8;
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+
+    .editor {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .editor-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .editor-box label {
+      font-size: 0.85rem;
+      color: #a6adc8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    textarea {
+      width: 100%;
+      height: 280px;
+      background: #313244;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: #cba6f7;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 12px 36px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    #compareBtn {
+      background: #cba6f7;
+      color: #1e1e2e;
+    }
+
+    #clearBtn {
+      background: #45475a;
+      color: #cdd6f4;
+    }
+
+    #result {
+      overflow-x: auto;
+      border-radius: 8px;
+    }
+
+    /* difflib table styles */
+    table.diff {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      background: #181825;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table.diff th {
+      background: #313244;
+      color: #a6adc8;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    table.diff td {
+      padding: 3px 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      vertical-align: top;
+      border-bottom: 1px solid #1e1e2e;
+    }
+
+    /* line numbers */
+    table.diff td.diff_header {
+      color: #6c7086;
+      background: #1e1e2e;
+      text-align: right;
+      padding-right: 10px;
+      user-select: none;
+      min-width: 40px;
+    }
+
+    /* added lines */
+    .diff_add { background: #1a3d2b; color: #a6e3a1; }
+    .diff_add > span { background: #2a6642; }
+
+    /* removed lines */
+    .diff_sub { background: #3d1a1a; color: #f38ba8; }
+    .diff_sub > span { background: #5a2a2a; }
+
+    /* changed lines */
+    .diff_chg { background: #3d3218; color: #f9e2af; }
+    .diff_chg > span { background: #5a4a1a; }
+
+    .diff_next { display: none; }
+
+    #placeholder {
+      text-align: center;
+      color: #585b70;
+      padding: 40px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Diff Checker</h1>
+  <p class="subtitle">Paste text in both panels and click Compare to highlight differences.</p>
+
+  <div class="editor">
+    <div class="editor-box">
+      <label>Original Text</label>
+      <textarea id="text1" placeholder="Paste original text here..."></textarea>
+    </div>
+    <div class="editor-box">
+      <label>Modified Text</label>
+      <textarea id="text2" placeholder="Paste modified text here..."></textarea>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="compareBtn" onclick="compare()">Compare</button>
+    <button id="clearBtn" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div id="result">
+    <div id="placeholder">Differences will appear here after you click Compare.</div>
+  </div>
+
+  <script>
+    async function compare() {
+      const text1 = document.getElementById('text1').value;
+      const text2 = document.getElementById('text2').value;
+
+      if (!text1.trim() && !text2.trim()) {
+        alert('Please paste text in at least one panel.');
+        return;
+      }
+
+      const btn = document.getElementById('compareBtn');
+      btn.textContent = 'Comparing...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text1, text2 })
+        });
+
+        const data = await response.json();
+        document.getElementById('result').innerHTML = data.diff;
+      } catch (err) {
+        document.getElementById('result').innerHTML =
+          '<div id="placeholder">Error comparing text. Please try again.</div>';
+      } finally {
+        btn.textContent = 'Compare';
+        btn.disabled = false;
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('text1').value = '';
+      document.getElementById('text2').value = '';
+      document.getElementById('result').innerHTML =
+        '<div id="placeholder">Differences will appear here after you click Compare.</div>';
+    }
+  </script>
+
+</body>
+</html>
