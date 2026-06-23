@@ -41,3 +41,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Trigger deploy in diffchecker_kind
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_PAT }}
+          repository: ${{ github.repository_owner }}/diffchecker_kind
+          event-type: image-updated
+          client-payload: |
+            {
+              "image": "ghcr.io/${{ github.repository }}",
+              "tag": "sha-${{ github.sha }}"
+            }
