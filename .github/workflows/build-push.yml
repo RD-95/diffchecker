@@ -42,14 +42,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Trigger deploy in diffchecker_kind
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.DEPLOY_PAT }}
-          repository: ${{ github.repository_owner }}/diffchecker_kind
-          event-type: image-updated
-          client-payload: |
-            {
-              "image": "ghcr.io/${{ github.repository }}",
-              "tag": "sha-${{ github.sha }}"
-            }
+      - name: Update image tag in diffchecker_kind
+        env:
+          DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          git clone https://x-access-token:${DEPLOY_PAT}@github.com/RD-95/diffchecker_kind.git
+          cd diffchecker_kind
+          sed -i "s/^  tag: .*/  tag: ${IMAGE_TAG}/" charts/diffchecker/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/diffchecker/values.yaml
+          git commit -m "chore: update image tag to ${IMAGE_TAG}"
+          git push
