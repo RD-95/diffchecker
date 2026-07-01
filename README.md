@@ -80,9 +80,42 @@ diffchecker_kind/
 
 ### ArgoCD
 
+ArgoCD is a GitOps continuous delivery tool. It watches the `diffchecker_kind` Git repo and ensures the Kubernetes cluster always matches what's defined there. If someone changes the cluster manually, ArgoCD reverts it. If you push a change to Git, ArgoCD applies it automatically.
+
+#### ArgoCD Components
+
+| Component | What it does |
+|---|---|
+| `argocd-server` | The web UI and API — what you log into |
+| `argocd-repo-server` | Reads the Git repo and renders Helm/YAML manifests |
+| `argocd-application-controller` | Watches the cluster and syncs it to match Git |
+
+#### What is a Service (`svc`)?
+
+A Kubernetes **Service** is the network door to a pod. Pods have no direct external access — a Service exposes them. `port-forward` opens a temporary tunnel from your machine through the Service to the pod:
+
+```
+Your browser (localhost:8443)
+  → port-forward tunnel
+    → argocd-server Service
+      → argocd-server Pod (UI)
+        → reads GitHub repo
+          → syncs Kind cluster
+```
+
+#### Access ArgoCD UI
+
+```bash
+kubectl port-forward svc/argocd-server 8443:443 -n argocd &
+# open https://localhost:8443
+# login: admin / admin123
+```
+
+#### Configuration
+
 - Watches `diffchecker_kind` repo (`main` branch, `charts/diffchecker` path)
 - Auto-sync enabled with self-heal and prune
-- Access UI: `kubectl port-forward svc/argocd-server 8443:443 -n argocd`
+- Namespace: `argocd`
 
 ---
 
